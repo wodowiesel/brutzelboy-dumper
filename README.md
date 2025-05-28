@@ -2,7 +2,11 @@
 
 brutzelboy-dumper is gameboy cartridge dumper and backuper on i2c via arduino esp32-s3 &amp; usb
 
-this is code is foresp and pc counterpart
+## experimental WIP development atm
+
+use at own risk, no warranty whatsoever!
+
+this is code is meant for esp32 and pc counterpart.
 
 link to my original standalone spi gb-dumper [https://github.com/wodowiesel/GB-Dumper]
 
