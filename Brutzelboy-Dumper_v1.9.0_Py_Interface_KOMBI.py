@@ -972,7 +972,7 @@ while (waitInput == 1):
                 try:
                     cc2 = int(cc[2:(len(cc)-5)])
                     
-                    print cc: '+ str(cc2))
+                    print ('cc: '+ str(cc2))
                     
                 except ValueError:
                     print ('cc Error\n')
