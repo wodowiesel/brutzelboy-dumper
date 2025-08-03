@@ -96,6 +96,7 @@ waitInput = 1
 userInput = '0'
 saveInput = '0'
 data = bytes(b'')
+suffix = ''
 suffix_sav = '.sav'
 #----------------
 try:
@@ -159,7 +160,7 @@ while (waitInput == 1):
                     print('\nGSL/EP Error\n')
 
                 ep = ep2 + ep1
-                if ep is None: 
+                if (ep is None): 
                     print('\nGSL/EP Error\n')
                 
                 else:
@@ -224,23 +225,21 @@ while (waitInput == 1):
                     cgbflags = int(cgbflag[2:(len(cgbflag)-5) ])
                     print('CGB (Color) Flag Compatibiity: '+ str(cgbflags)+'\n')
                     if (cgbflags == 128): # 80h
+                        suffix = '.gbc'
                         print('CGB supported & works on old gameboys also\n')
                     elif (cgbflags == 192): # C0h
+                        suffix = '.gbc'
                         print('CGB only on Color [exclusive] (physically the same)\n')
                     elif (cgbflags == 0): # C0h
+                        suffix = '.gb'
                         print('CGB unsupported, normal Game b/w\n') 
                     else:
+                        suffix = '.gb'
                         print('CGB unknown\n')
                         
                 except ValueError: 
                     print('CGB Flag type Error\n')
-                
-                if ((cgbflags == 128) or (cgbflags == 192)): 
-                    suffix = '.gbc'
-                elif (cgbflags == 0):
-                    suffix = '.gb'
-                else:
-                    suffix = '.gb'
+                    
         #-------------------------            
                 sgbflag = ascii(ser.readline()) # 0146 supergameboy
                 try:
@@ -345,7 +344,7 @@ while (waitInput == 1):
                         print('RTC+IR Hudson HuC-3 (MBC3)+Speaker\n')
                     elif (cartridgeType == 255): # 0xFF
                         print('ROM+SRAM+BATT+IR Hudson HuC-1 (MBC1) or Pro Action Replay (Europe)\n')
-                    elif (cartridgeType == None):
+                    elif (cartridgeType is None):
                         print('is None\n')
                     else:
                         print('not found or unknown\n')
@@ -393,7 +392,7 @@ while (waitInput == 1):
                         print('1.5 MByte (96 banks)\n')
                     elif (romSize == 255): # FF
                         print('32 KByte (2 banks), Action Replay Pro(Europe)\n') # special
-                    elif (romSize == None):
+                    elif (romSize is None):
                         print('is None, 0 KByte (0 Banks)\n')
                     else:
                         print('not found or unknown\n')
@@ -446,7 +445,7 @@ while (waitInput == 1):
                         print('? KByte (? banks), Beast Fighter (Taiwan) (Sachen)\n')
                     elif (ramSize == 255):
                         print('? KByte (? banks), Action Replay Pro (Europe)\n')
-                    elif (ramSize == None):
+                    elif (ramSize is None):
                         print('is None\n')
                     else:
                         print('not found or unknown\n')
@@ -520,7 +519,7 @@ while (waitInput == 1):
                     
                     
                     """
-                    if ((developers != 51) and (developers != None)): # old should it be 0x33 -> dec 51???
+                    if ((developers != 51) and (developers is not None)): # old should it be 0x33 -> dec 51???
                         print('developer/publisher old: '+ str(licensee)+'\n')
                     elif (developers == 51): #new
                         print('developer/publisher new: '+ str(licensee_new)+'\n')
@@ -529,7 +528,7 @@ while (waitInput == 1):
                      """   
                     """
                      developer_name = developer[2:(len(developer)-5)]
-                     if (developer_name != None):
+                     if (developer_name is not None):
                         print('Developer Nr: '+ str(developers)+'\n')
                     else:
                         print('developer unknown\n')
@@ -808,9 +807,9 @@ while (waitInput == 1):
                 except ValueError:
                     print('\nGSLA Error\n')
                 
-                #if (gsl1 == None and gsl2 == None):
+                #if (gsl1 is None and gsl2 is None):
                         #print('0 boot Failed\n')
-                #if (gsl1 != None and gsl2 != None):
+                #if ((gsl1 is not None) and (gsl2 is not None)):
                         #print('1 boot ok\n')
                 #else:
                         #print('unknown\n')
@@ -854,7 +853,7 @@ while (waitInput == 1):
                 gameTitles = ascii(ser.readline())
                 try:
                     gameTitle2 = gameTitles[2:(len(gameTitles)-5)] 
-                    if (gameTitle2 != None):
+                    if (gameTitle2 is not None):
                         print('Gametitle: '+ str(gameTitle2) +'\n') # maybe str()
                     else:
                         gameTitle2 = 'unknown'
@@ -868,7 +867,7 @@ while (waitInput == 1):
                     gamecodes = gamecode[2:(len(gamecode)-5)]
                     print('Game code: '+ str(gamecodes)+'\n')
                     #
-                    if (gamecodes != None):
+                    if (gamecodes is not None):
                         if (gamecodes[0] == 'A'):
                             print('Normal game; Older titles (mainly 2001-2003)\n')
                         elif (gamecodes[0] == 'B'):
@@ -917,7 +916,7 @@ while (waitInput == 1):
                 manufcodes = ascii(ser.readline())
                 try:
                     manufTitle2 = manufcodes[2:(len(manufcodes)-5)] 
-                    if (manufTitle2 != None):
+                    if (manufTitle2 is not None):
                         print('Manufacturer title: '+ str(manufTitle2) +'\n') # maybe str()
                     else:
                         manufTitle2 = 'unknown'
@@ -1161,7 +1160,7 @@ while (waitInput == 1):
             elif (userInput == '4'):
                 print('\nSD Check\n')
                 ser.write('SDCHECK'.encode('ascii'))
-                line = ser.read()
+                line = ser.read(64)
                 print(line.hex())
                 #print(line)
                 sys.stdout.flush()
