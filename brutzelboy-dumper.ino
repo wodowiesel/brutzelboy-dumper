@@ -22,8 +22,8 @@
 #define GB_A1 1
 #define GB_A2 2
 #define GB_A3 3
-#define GB_A4 4
-#define GB_A5 5
+#define GB_A4 4 // sda
+#define GB_A5 5 // clk
 #define GB_A6 6
 #define GB_A7 7
 #define GB_A8 8
@@ -44,17 +44,17 @@
 #define GB_D5 5
 #define GB_D6 6
 #define GB_D7 7
-#define GB_CLK 8
-#define GB_WR 9
-#define GB_RD 10
-#define GB_CS 11
-#define GB_RES 12 // CS2 for GBA 
-#define GB_VIN 13 // AUDIO GB & IRQ for GBA 
-#define GB_VOLT 14 // switch 5 & 3V3 
+#define GB_CLK 8 //output
+#define GB_WR 9 // output
+#define GB_RD 10 // output
+#define GB_CS 11 // output
+#define GB_RES 12 // output CS2 for GBA 
+#define GB_VIN 13 // output AUDIO GB & IRQ for GBA 
+#define GB_VOLT 14 // output switch 5 & 3V3 
 //---------
 #define BAUD 115200
-#define SDA 2
-#define SCL 1
+#define SDA 2 // Ard_A4
+#define SCL 1 // Ard_A5
 
 //--------
 // expander activation
@@ -116,7 +116,7 @@ uint8_t gcs = 0;
 
 uint8_t readData[64];
 
-//---setup start & connections
+//--- setup start & connections
 void setup() {
   //--------- init connection
   Serial.begin(BAUD);  // for 4/16 MHz clock , -> SERIAL_8N1 standard
@@ -129,7 +129,7 @@ void setup() {
   Wire.begin(); // nano slave addr 42 -> 0x2A, sda pin 18 A4, 19 scl A5// gbc I2C bus ->esp: address, scl, sda, *buffer, len
 
   //-------- setup i2c
-  if (Wire.available() <= 0) { // peripheral may send less than requested
+  if(Wire.available() <= 0) { // peripheral may send less than requested
     delay(100);
     //-----------------
   }
@@ -140,43 +140,46 @@ void setup() {
     if (!aw_1.begin(EX1)) { //dec 88
       Serial.println("AW9523_1 not found? Check wiring!");
       Serial.flush();
-      while (1) delay(10);  // halt forever
+      while (1) {delay(10);}  // halt forever
     }
 
     if (!aw_2.begin(EX2)) { // dec 90
-     Serial.println("AW9523_2 not found? Check wiring!");
+      Serial.println("AW9523_2 not found? Check wiring!");
       Serial.flush();
-      while (1) delay(10);  // halt forever
+      while(1) {delay(10);}  // halt forever
     }
   }
 
-  for (uint8_t address = 0; address <= 15; address++) {
+  for(uint8_t address = 0; address <= 15; address++) {
     aw_1.pinMode(address, OUTPUT); // A0-A15
-    aw_1.digitalWrite(address, LOW);
+    aw_1.digitalWrite(address, HIGH);
   }
 
-  for (uint8_t address = 0; address <= 7; address++) {
+  for(uint8_t address = 0; address <= 7; address++) {
     aw_2.pinMode(address, INPUT); // D0-D7 sure its input?
+    aw_2.digitalWrite(address, HIGH);
+  }
+
+  aw_2.pinMode(GB_CLK, OUTPUT); // 8 clock active
+  aw_2.digitalWrite(GB_CLK, HIGH);
+
+  for(uint8_t address = 9; address <= 11; address++) { // old 15
+    aw_2.pinMode(address, OUTPUT); // WR-CS active
     aw_2.digitalWrite(address, LOW);
   }
 
-  for (uint8_t address = 8; address <= 11; address++) { // old 15
-    aw_2.pinMode(address, OUTPUT); // CLK-GND
-    aw_2.digitalWrite(address, LOW);
-  }
-
-  aw_2.pinMode(GB_RES, OUTPUT); // reset deactivated (active low)
+  aw_2.pinMode(GB_RES, OUTPUT); // 12 reset deactivated (active low)
   aw_2.digitalWrite(GB_RES, HIGH);
   
-  aw_2.pinMode(GB_VIN, OUTPUT); // output esp-> card input audio!
-  aw_2.digitalWrite(GB_VIN, LOW);
+  aw_2.pinMode(GB_VIN, OUTPUT); // 13 output esp-> card input audio!
+  aw_2.digitalWrite(GB_VIN, HIGH);
   //aw_2.interruptEnableGPIO(GB_VIN); // IRQ für GBA
   //aw_2.enableInterrupt(GB_VIN); // IRQ für GBA
   
-  aw_2.pinMode(GB_VOLT, OUTPUT);
+  aw_2.pinMode(GB_VOLT, OUTPUT); // 14
   aw_2.digitalWrite(GB_VOLT, HIGH); // high 5v & low 3v3 maybe?
 
-  //Sets direction for all 16 GPIO, 1 == output, 0 == input.
+  // Sets direction for all 16 GPIO, 1 == output, 0 == input.
   //aw_1.configureDirection(1);
   //aw_2.configureDirection(1);
   
@@ -188,11 +191,11 @@ void setup() {
 void loop() {
 
   // Wait for serial input
-  while (Serial.available() <= 0) {
+  while(Serial.available() <= 0) {
     delay(10);
   }
 
-  while (Serial.available() > 0) {
+  while(Serial.available() > 0) {
     // Decode input
     r = Serial.read(); // maybe parameters idk
     readInput[readCount] = r;
@@ -203,7 +206,7 @@ void loop() {
 
   // first menu option
   // Cartridge Header
-  if (strstr(readInput, "HEADER")) {
+  if(strstr(readInput, "HEADER")) {
     rd_wr_mreq_reset(); // reset status
 
     // --------------
@@ -218,8 +221,8 @@ void loop() {
     // Nintendo Logo Check
     // https://stackoverflow.com/questions/21119904/how-to-decode-the-nintendo-logo-from-gameboyssss
 
-    for (uint32_t romAddress = 0x0104; romAddress <= 0x0133; romAddress++) { 
-      if (nintendoLogo[x] != read_byte(romAddress)) {
+    for(uint32_t romAddress = 0x0104; romAddress <= 0x0133; romAddress++) { 
+      if(nintendoLogo[x] != read_byte(romAddress)) {
         logoCheck = 0;
         break;
       }
@@ -228,10 +231,10 @@ void loop() {
     Serial.println(logoCheck);
     //----------
     // Read cartridge title and check for non-printable text
-    for (uint32_t romAddress = 0x0134; romAddress <= 0x0143; romAddress++) {
+    for(uint32_t romAddress = 0x0134; romAddress <= 0x0143; romAddress++) {
       char headerChar = (char) read_byte(romAddress);
       // https://www.rapidtables.com/code/text/ascii-table.html
-      if (((headerChar >= 0x20) && (headerChar <= 0x7E))  ||  // space (0x20) or ! x21 to ~
+      if(((headerChar >= 0x20) && (headerChar <= 0x7E))  ||  // space (0x20) or ! x21 to ~
           ((headerChar >= 0x80) && (headerChar <= 0xFF)) ) { // extended special chars
         gameTitle[(romAddress - 0x0134)] = headerChar; // only read/printable characters
        }
@@ -244,10 +247,10 @@ void loop() {
     //------------
     //Manufacturer Code
 
-    for (uint32_t romAddress = 0x013F; romAddress <= 0x0142; romAddress++) {
+    for(uint32_t romAddress = 0x013F; romAddress <= 0x0142; romAddress++) {
       char manufChar = (char) read_byte(romAddress);
       // https://www.rapidtables.com/code/text/ascii-table.html
-      if (((manufChar >= 0x20) && (manufChar <= 0x7E))  ||  // space to ~
+      if(((manufChar >= 0x20) && (manufChar <= 0x7E))  ||  // space to ~
           ((manufChar >= 0x80) && (manufChar <= 0xFF)) ) { // extended special chars
         manufTitle[(romAddress - 0x013F)] = manufChar; // only read/printable characters
       }
@@ -267,7 +270,7 @@ void loop() {
 
     //----------
     // check cartridge type, romtype, ram, battery, mbc, rumble, multi, cmera, rtc, arp, voice
-    cartridgeType = read_byte(0x0147); // dec:327 // MBC type should be specified in the byte at 0147hex of the ROM
+    cartridgeType = read_byte(0x0147); // dec:327 / MBC type should be specified in the byte at 0147hex of the ROM
     Serial.println(cartridgeType);
 
     //----------
@@ -275,10 +278,10 @@ void loop() {
     romSize = read_byte(0x0148); // dec: 328
     Serial.println(romSize);
 
-    if (romSize == 0x00) { //$0000-$3FFF: ROM Bank $00 (Read Only) first 16KB of the cartridge, the first memory bank. It is unable to be switched or modified.
+    if(romSize == 0x00) { // $0000-$3FFF: ROM Bank $00 (Read Only) first 16KB of the cartridge, the first memory bank. It is unable to be switched or modified.
       romBanks = 1;
     }
-    else if (romSize >= 0x01) { // Calculate rom banks
+    else if(romSize >= 0x01) { // Calculate rom banks
       romBanks = (2 << romSize);
     }
     else { // None or 0 banks
@@ -287,67 +290,67 @@ void loop() {
     Serial.println(romBanks);
 //----------------
     uint32_t rom_size_full = 0; // unused atm
-    if (romSize == 0x00) { // not used atm
+    if(romSize == 0x00) { // not used atm
       rom_size_full = 32767;    // 32 KB
       romEndAddress = 0x7FFF; // =(banks*16*1024)-1
     }
-    else if (romSize == 0x01) {
+    else if(romSize == 0x01) {
       rom_size_full = 65535;    // 64 KB
       romEndAddress = 0xFFFF;
     }
-    else if (romSize == 0x02) {
+    else if(romSize == 0x02) {
       rom_size_full = 131071;    // 128 KB
       romEndAddress = 0x1FFFF;
     }
-    else if (romSize == 0x03) {
+    else if(romSize == 0x03) {
       rom_size_full = 262143;    // 256 KB
       romEndAddress = 0x3FFFF;
     }
-    else if (romSize == 0x04) {
+    else if(romSize == 0x04) {
       rom_size_full = 524287;    // 512 KB
       romEndAddress = 0x7FFFF;
     }
-    else if (romSize == 0x05 && ((cartridgeType == 0x01) || (cartridgeType == 0x02) || (cartridgeType == 0x03))) {
+    else if(romSize == 0x05 && ((cartridgeType == 0x01) || (cartridgeType == 0x02) || (cartridgeType == 0x03))) {
       rom_size_full = 1032191;  // 1008 KByte (63 banks)
       romEndAddress = 0xFBFFF;
     }
-    else if (romSize == 0x05) {
+    else if(romSize == 0x05) {
       rom_size_full = 1048575;   // 1 MB
       romEndAddress = 0xFFFFF;
     }
-    else if (romSize == 0x06 && ((cartridgeType == 0x01) || (cartridgeType == 0x02) || (cartridgeType == 0x03))) {
+    else if(romSize == 0x06 && ((cartridgeType == 0x01) || (cartridgeType == 0x02) || (cartridgeType == 0x03))) {
       rom_size_full = 2047999;  // 2 MByte (125 banks)
       romEndAddress = 0x1F3FFF;
     }
-    else if (romSize == 0x06) {
+    else if(romSize == 0x06) {
       rom_size_full = 2097151;   // 2 MB 128 banks
       romEndAddress = 0x1FFFFF;
     }
-    else if (romSize == 0x07) {
+    else if(romSize == 0x07) {
       rom_size_full = 4194303;   // 4 MB
       romEndAddress = 0x3FFFFF;
     }
-    else if (romSize == 0x08) {
+    else if(romSize == 0x08) {
       rom_size_full = 8388607;  // 8 MB max
       romEndAddress = 0x7FFFFF;
     }
-    else if (romSize == 0x0D) {
+    else if(romSize == 0x0D) {
       rom_size_full = 262143;   // 256 KB
       romEndAddress = 0x03FFFF;
     }
-    else if (romSize == 0x52) {
+    else if(romSize == 0x52) {
       rom_size_full = 1179647;   // 1.1 MB
       romEndAddress = 0x11FFFF;
     }
-    else if (romSize == 0x53) {
+    else if(romSize == 0x53) {
       rom_size_full = 1310719;   // 1.2 MB
       romEndAddress = 0x13FFFF;
     }
-    else if (romSize == 0x54) {
+    else if(romSize == 0x54) {
       rom_size_full = 1572863;   // 1.5 MB
       romEndAddress = 0x17FFFF;
     }
-    else if (romSize == 0xFF) {
+    else if(romSize == 0xFF) {
       rom_size_full = 32767;   // 32 KB
       romEndAddress = 0x7FFF;
     }
@@ -365,31 +368,31 @@ void loop() {
 
     // RAM banks
 
-    if (ramSize == 0x00) {
+    if(ramSize == 0x00) {
       ramBanks = 0;
     }
-    else if ((ramSize == 0x00) && (cartridgeType == 0x06)) {
+    else if((ramSize == 0x00) && (cartridgeType == 0x06)) {
       ramBanks = 1;
     }
-    else if (ramSize == 0x01) {
+    else if(ramSize == 0x01) {
       ramBanks = 1;
     }
-    else if (ramSize == 0x02) {
+    else if(ramSize == 0x02) {
       ramBanks = 1;
     }
-    else if (ramSize == 0x03) {
+    else if(ramSize == 0x03) {
       ramBanks = 4;
     }
-    else if (ramSize == 0x04) {
+    else if(ramSize == 0x04) {
       ramBanks = 16;
     }
-    else if (ramSize == 0x05) {
+    else if(ramSize == 0x05) {
       ramBanks = 8;
     }
-    else if (ramSize == 0x38) {  // 56
+    else if(ramSize == 0x38) {  // 56
       ramBanks = 8;
     }
-    else if (ramSize == 0xFF) { // 255
+    else if(ramSize == 0xFF) { // 255
       ramBanks = 8;
     }
     else {
@@ -398,28 +401,28 @@ void loop() {
     Serial.println(ramBanks);
 
     // RAM end address
-    if ((ramSize == 0x00) && (cartridgeType == 0x06)) { // 
+    if((ramSize == 0x00) && (cartridgeType == 0x06)) { // 
       ramEndAddress = 0x01FF;  // MBC2 512 bytes (01FF) (nibbles, 0,5kb) dec 41471 0xA1FF
     }
-    else if (ramSize == 0x01) {
+    else if(ramSize == 0x01) {
       ramEndAddress = 0xA7FF;  // 2K RAM, dec 43007
     }
-    else if (ramSize == 0x02) {
+    else if(ramSize == 0x02) {
       ramEndAddress = 0xBFFF;  // 8K RAM, dec 49151
     }
-    else if (ramSize == 0x03) {
+    else if(ramSize == 0x03) {
       ramEndAddress = 0x7FFF;  // 32K RAM, dec 49151
     }
-    else if (ramSize == 0x04) {
+    else if(ramSize == 0x04) {
       ramEndAddress = 0x01FFFF;  // 128K RAM, dec 49151
     }
-    else if (ramSize == 0x05) {
+    else if(ramSize == 0x05) {
       ramEndAddress = 0xFFFF;  // 64K RAM, dec 49151
     }
-    else if (ramSize == 0x38) { // Beast Fighter (Taiwan) (Sachen)
+    else if(ramSize == 0x38) { // Beast Fighter (Taiwan) (Sachen)
       ramEndAddress = 0xFFFF;  
     }
-    else if (ramSize == 0xFF) { // Action Replay Pro (Europe)
+    else if(ramSize == 0xFF) { // Action Replay Pro (Europe)
       ramEndAddress = 0xFFFF;  
     }
     else { // size = 0
@@ -428,17 +431,17 @@ void loop() {
     Serial.println(ramEndAddress, HEX);
 
     //----------
-    //region of the game or multicard
+    // region of the game or multicard
     region = read_byte(0x014A);  // dec:330
     Serial.println(region);
     
     //-------------------
-    // old &new licensee/developer/publisher of the game
+    // old & new licensee/developer/publisher of the game
     licensee = read_byte(0x014B); // dec: 331
     //Serial.println(licensee); 
 
-    if (licensee == 0x0033) { // dec 51 "see new license code"
-      for (uint16_t y = 0x0144; y <= 0x0145; y++) { // only 2 values
+    if(licensee == 0x0033) { // dec 51 "see new license code"
+      for(uint16_t y = 0x0144; y <= 0x0145; y++) { // only 2 values
         licensee_new = read_byte(y); // dec: 331, int in py
 
       }
@@ -450,7 +453,8 @@ void loop() {
     }
 
     //-------------
-    /* Mask ROM Version number
+    /* 
+      Mask ROM Version number
       Specifies the version number of the game. That is usually 00h */
     romver = read_byte(0x014C); // dec 332
     Serial.println(romver);
@@ -462,7 +466,7 @@ void loop() {
     headercs = read_byte(0x014D); // dec 333 complement checksum
     Serial.println(headercs);
 
-    for (uint16_t c = 0x0134; c <= 0x014C; c++) { // if not enough then int16!
+    for(uint16_t c = 0x0134; c <= 0x014C; c++) { // if not enough then int16!
       hcheck = read_byte(c);
       z = z - hcheck - 1;
     }
@@ -474,7 +478,7 @@ void loop() {
     }*/
     //Serial.println(h);
 
-    if ((headercs == z)) { // || (headercs == h)
+    if((headercs == z)) { // || (headercs == h)
       hcs = 1; // true check
     }
     else {
@@ -483,14 +487,15 @@ void loop() {
     Serial.println(hcs); // works
     //---------------
     // 014E-014F - Global Checksum
-    // Contains a 16 bit checksum (upper byte first) across the whole cartridge ROM. Produced by adding all bytes of the cartridge (except for the two checksum bytes). The Gameboy doesn't verify this checksum.
+    // Contains a 16 bit checksum (upper byte first) across the whole cartridge ROM. 
+    // Produced by adding all bytes of the cartridge (except for the two checksum bytes). The Gameboy doesn't verify this checksum.
     uint16_t msb = read_byte(0x014E); // first
     uint16_t lsb = read_byte(0x014F); // last
     uint32_t stored_global_checksum = (msb << 8) | lsb;
     //Serial.println(stored_global_checksum);
 
-    for (uint32_t k = 0x0000; k < romEndAddress; k++) { // rom_size_full
-      if ((k != 0x014E) && (k != 0x014F)) {
+    for(uint32_t k = 0x0000; k < romEndAddress; k++) { // rom_size_full
+      if((k != 0x014E) && (k != 0x014F)) {
         uint8_t full_globalcs = read_byte(k);
         calculated_global_checksum += full_globalcs;
       }
@@ -498,7 +503,7 @@ void loop() {
     //Serial.println(full_globalcs);
     //Serial.println(calculated_global_checksum);
 
-    if (calculated_global_checksum == stored_global_checksum) {
+    if(calculated_global_checksum == stored_global_checksum) {
       gcs = 1; // true check
     }
     else {
@@ -511,13 +516,13 @@ void loop() {
   }
   // next menu option
   // Dump ROM
-  else if (strstr(readInput, "READROM")) {
+  else if(strstr(readInput, "READROM")) {
     rd_wr_mreq_reset();
     uint32_t romAddress = 0x00;
 
     // Read number of banks and switch banks
-    for (uint8_t bank = 1; bank < romBanks; bank++) { // read all banks but maybe not correct
-      if (cartridgeType >= 0x05) { // MBC2 and above
+    for(uint8_t bank = 1; bank < romBanks; bank++) { // read all banks but maybe not correct
+      if(cartridgeType >= 0x05) { // MBC2 and above
         write_byte(0x2100, bank); // Set ROM bank
       }
       else { // MBC1s
@@ -526,14 +531,14 @@ void loop() {
         write_byte(0x2000, bank & 0x1F); // Set bits 0 & 4 (00011111) of ROM bank
       }
 
-      if (bank > 1) {
+      if(bank > 1) {
         romAddress = 0x4000; // dec 16.384
       }
 
       // Read up to 7FFF per bank
-      while (romAddress <= 0x7FFF) { //dec 32.767
+      while(romAddress <= 0x7FFF) { //dec 32.767
 
-        for (uint8_t i = 0; i < 64; i++) { //0-63 =64
+        for(uint8_t i = 0; i < 64; i++) { //0-63 =64
           readData[i] = read_byte(romAddress + i);
         }
         
@@ -552,15 +557,15 @@ void loop() {
 
   // next menu option
   // Read RAM
-  else if (strstr(readInput, "READRAM")) {
+  else if(strstr(readInput, "READRAM")) {
     rd_wr_mreq_reset();
 
     // MBC2 Fix (unknown why this fixes reading the ram, maybe has to read ROM before RAM?)
     read_byte(0x0134);
 
     // if cartridge have RAM test
-    if (ramEndAddress > 0x00) {
-      if (cartridgeType <= 0x04) {  // MBC1
+    if(ramEndAddress > 0x00) {
+      if(cartridgeType <= 0x04) {  // MBC1
         write_byte(0x6000, 1);   // Set RAM Mode
       }
 
@@ -568,13 +573,13 @@ void loop() {
       write_byte(0x0000, 0x0A);
 
       // Switch RAM banks
-      for (uint8_t bank = 0; bank < ramBanks; bank++) { // <= probieren statt nur <
+      for(uint8_t bank = 0; bank < ramBanks; bank++) { // <= probieren statt nur <
         write_byte(0x4000, bank);
 
         // Read RAM
-        for (uint16_t ramAddress = 0xA000; ramAddress <= ramEndAddress; ramAddress += 64) {
+        for(uint16_t ramAddress = 0xA000; ramAddress <= ramEndAddress; ramAddress += 64) {
           uint8_t readData[64];
-          for (uint8_t j = 0; j < 64; j++) {
+          for(uint8_t j = 0; j < 64; j++) {
             readData[j] = read_byte(ramAddress + j);
           }
 
@@ -591,15 +596,15 @@ void loop() {
 
   // next menu option
   // Write RAM
-  else if (strstr(readInput, "WRITERAM")) {
+  else if(strstr(readInput, "WRITERAM")) {
     rd_wr_mreq_reset();
 
     // MBC2 Fix (unknown why this fixes it, maybe has to read ROM before RAM?)
     read_byte(0x0134);
 
     // Does cartridge have RAM
-    if (ramEndAddress > 0) {
-      if (cartridgeType <= 0x04) {  // MBC1
+    if(ramEndAddress > 0) {
+      if(cartridgeType <= 0x04) {  // MBC1
         write_byte(0x6000, 1);   // Set RAM Mode
       }
 
@@ -607,13 +612,13 @@ void loop() {
       write_byte(0x0000, 0x0A); // 0A activates, 00 deactivates
 
       // Switch RAM banks
-      for (uint8_t bank = 0; bank < ramBanks; bank++) { // maybe <= but complicated
+      for(uint8_t bank = 0; bank < ramBanks; bank++) { // maybe <= but complicated
         write_byte(0x4000, bank);
 
         // Write RAM
-        for (uint16_t ramAddress = 0xA000; ramAddress <= ramEndAddress; ramAddress++) {
+        for(uint16_t ramAddress = 0xA000; ramAddress <= ramEndAddress; ramAddress++) {
           // Wait for serial input
-          while (Serial.available() <= 0) {
+          while(Serial.available() <= 0) {
              // do nothig when waiting
           }
 
@@ -643,7 +648,7 @@ void loop() {
   }
   
   // next menu option
-  else if (strstr(readInput, "CLOCK")) { // debug clk pulse
+  else if(strstr(readInput, "CLOCK")) { // debug clk pulse
     // test clock trigger
     //Serial.println("CLOCK TEST\n");
     aw_2.digitalWrite(GB_CLK, LOW);
@@ -654,14 +659,14 @@ void loop() {
   }
 
   // next menu option
-  else if (strstr(readInput, "AUDIO")) {
+  else if(strstr(readInput, "AUDIO")) {
     // terminate i2c + spi + serial
     //Serial.println("AUDIO TEST\n");
     gb_aud();
     Serial.flush();// Flush Waits for the transmission of outgoing serial data to complete
   }
 
-  else if (strstr(readInput, "EXIT")) {
+  else if(strstr(readInput, "EXIT")) {
     // terminate i2c + spi + serial
     //Serial.println("EXITING!\nIf you want to use it again, you need to reset device!\n");
     // Flush Waits for the transmission of outgoing serial data to complete
@@ -679,7 +684,7 @@ void loop() {
   }
 
   // status reset
-  rd_wr_mreq_off();
+  //rd_wr_mreq_off();
 
 }
 //--- End loop! start function definitions
@@ -704,18 +709,18 @@ void latchaddress(uint16_t addr) {
 }
 
 // Use the shift registers to shift out the address
-void shiftout_address(uint16_t shiftAddress) { // vermute dass hier noch ein fehler vorliegt weil dump abbricht
+void shiftout_address(uint16_t shiftAddress) { // vermute, dass hier noch ein fehler vorliegt weil dump abbricht
   
   aw_2.digitalWrite(GB_CS, LOW); // not sure if correct
   //latchaddress(shiftAddress); // not sure probably strange
-  //allgemein latch => "now is the time to copy all the shifted data bits to the output register so they appear on the output pins"
+  // generally  latch => "now is the time to copy all the shifted data bits to the output register so they appear on the output pins"
 /*
-AW9523_REG_INPUT0 (0x00):
-This register is used for reading input values from GPIO port 0.
-AW9523_REG_OUTPUT0 (0x02):
-This register is used for writing output values to GPIO port 0.
-AW9523_REG_CONFIG0 (0x04):
-This register is used for configuring the direction of GPIO port 0 (input or output).
+  AW9523_REG_INPUT0 (0x00):
+  This register is used for reading input values from GPIO port 0.
+  AW9523_REG_OUTPUT0 (0x02):
+  This register is used for writing output values to GPIO port 0.
+  AW9523_REG_CONFIG0 (0x04):
+  This register is used for configuring the direction of GPIO port 0 (input or output).
 */
   
   //https://reference.arduino.cc/reference/de/language/functions/communication/wire/begintransmission/
@@ -732,10 +737,13 @@ This register is used for configuring the direction of GPIO port 0 (input or out
 }
 
 uint8_t read_byte(uint16_t address) {
-  shiftout_address(address);  // Shift out address
+  
 
   aw_2.digitalWrite(GB_CLK, HIGH);
+  
+  shiftout_address(address);  // Shift out address
   aw_2.digitalWrite(GB_CS, LOW);
+
   aw_2.digitalWrite(GB_RD, LOW);
  
   asm volatile("nop"); // Delay a little (minimum is 2 nops, using 3 to be sure)
@@ -775,8 +783,8 @@ void write_byte(uint16_t address, uint8_t data) {
   save &= 0xFF00; // not sure about address from brutzi
   save |= data; // brutzi added
 
-  //old stuff from original
-  //save |= (data << 2); // PORTD // equivalent to x = x & y bitwise AND operator
+  // old stuff from original
+  //save |= (data << 2); // PORTD / equivalent to x = x & y bitwise AND operator
   //save |= (data >> 6); // PORTB
   
   aw_2.outputGPIO(save); // data
@@ -825,7 +833,7 @@ void rd_wr_mreq_off() {
   aw_2.digitalWrite(GB_CLK, LOW);
 }
 
-// --------------experimental!!! if ready it will be built-in to the upper code!!!
+// -------------- experimental!!! if ready it will be built-in to the upper code!!!
 /*
 uint16_t readDataBus() { // not used atm, (for gba before)
   uint16_t save = aw_2.inputGPIO();
@@ -840,11 +848,11 @@ void gb_aud() {
   aw_2.digitalWrite(GB_CLK, HIGH);
   
   aw_2.digitalWrite(GB_VIN, HIGH); // on
-  aw_2.digitalWrite(GB_VIN, LOW); // on
+  aw_2.digitalWrite(GB_VIN, LOW); // off
  
   aw_2.digitalWrite(GB_CLK, LOW);
   wirereq (); // just debug i2c
-  //needs extra func in py
+  // needs extra func in py
   //Serial.println("GB audio done \n");
   Serial.flush();
 }
