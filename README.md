@@ -1,6 +1,6 @@
 # brutzelboy-dumper
 
-brutzelboy-dumper is gameboy cartridge dumper and backuper on i2c via arduino esp32-s3 &amp; usb
+brutzelboy-dumper is gameboy cartridge dumper and backuper on i2c via arduino esp32-s3/c3 &amp; usb
 
 ## experimental WIP development atm
 
